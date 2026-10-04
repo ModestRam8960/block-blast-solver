@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block Blast Solver - Complete Visual Shape Gallery</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            gameDark: '#0b1120',
+            gameCard: '#1e293b',
+            gameAccent: '#f59e0b',
+            gameCell: '#334155',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0b1120;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    /* 8x8 Board Grid */
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 5px;
+      padding: 10px;
+      background-color: #1e293b;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.05);
+    }
+
+    .board-cell {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      background-color: #334155;
+      transition: all 0.12s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .board-cell:hover {
+      filter: brightness(1.25);
+    }
+
+    .board-cell.filled {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+      border: 1px solid #60a5fa;
+    }
+
+    .board-cell.placed-block-0 {
+      background: linear-gradient(135deg, #f97316, #ea580c) !important;
+      border: 1px solid #fdba74 !important;
+      box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4);
+    }
+
+    .board-cell.placed-block-1 {
+      background: linear-gradient(135deg, #06b6d4, #0891b2) !important;
+      border: 1px solid #67e8f9 !important;
+      box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4);
+    }
+
+    .board-cell.placed-block-2 {
+      background: linear-gradient(135deg, #a855f7, #7e22ce) !important;
+      border: 1px solid #d8b4fe !important;
+      box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4);
+    }
+
+    /* 5x5 Figure Grid */
+    .figure-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 3px;
+      padding: 6px;
+      background-color: #0f172a;
+      border-radius: 10px;
+      border: 1px solid #334155;
+    }
+
+    .figure-cell {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      background-color: #1e293b;
+      cursor: pointer;
+      transition: background-color 0.12s ease;
+    }
+
+    .figure-cell:hover {
+      background-color: #475569;
+    }
+
+    .figure-cell.active-0 { background: linear-gradient(135deg, #f97316, #ea580c); }
+    .figure-cell.active-1 { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .figure-cell.active-2 { background: linear-gradient(135deg, #a855f7, #7e22ce); }
+
+    /* Modal Gallery Card Mini-Grid */
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 2px;
+      width: 52px;
+      height: 52px;
+      background-color: #0f172a;
+      padding: 3px;
+      border-radius: 6px;
+    }
+
+    .mini-cell {
+      aspect-ratio: 1;
+      border-radius: 1px;
+      background-color: #1e293b;
+    }
+
+    .mini-cell.filled {
+      background-color: #f59e0b;
+    }
+
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    select.shape-selector {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      background-size: 1em;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="switchScreen('home')">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center font-display font-extrabold text-white text-xl shadow-lg shadow-orange-500/20">
+          BB
+        </div>
+        <div>
+          <h1 class="font-display font-bold text-lg leading-none text-white">Block Blast Solver</h1>
+          <span class="text-xs text-slate-400 font-medium">38 Shapes Visual Picker AI Assistant</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="switchScreen('home')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Home / Rules
+        </button>
+        <button onclick="switchScreen('manual')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20 transition">
+          Solver Tool
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-5xl w-full mx-auto p-4 sm:p-6">
+
+    <!-- ===== SCREEN 1: HOME & GUIDE ===== -->
+    <div class="screen active" id="screen-home">
+      <!-- Hero Banner -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 mb-8 text-center relative overflow-hidden shadow-2xl">
+        <span class="inline-block px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400 bg-amber-400/10 rounded-full mb-3">
+          Complete 38-Shape Visual Picker
+        </span>
+        <h2 class="font-display text-3xl sm:text-4xl font-extrabold text-white mb-3">
+          Solve Any Block Blast Puzzle Instantly
+        </h2>
+        <p class="text-slate-300 max-w-xl mx-auto text-sm sm:text-base mb-6 leading-relaxed">
+          Select shapes visually from our complete gallery of all 38 Block Blast shapes including all line lengths, squares, rectangles, L-shapes, Z-shapes, and T-shapes.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button onclick="switchScreen('manual')" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-sm shadow-lg shadow-orange-500/25 transition transform active:scale-95 flex items-center justify-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            <span>Open Solver & Visual Shape Picker</span>
+          </button>
+          <button onclick="loadDemoScenario()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition flex items-center justify-center space-x-2">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>Try Demo Preset</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- How to Use Section -->
+      <section class="mb-10">
+        <h3 class="font-display text-xl font-bold text-white mb-4 flex items-center space-x-2">
+          <span class="w-2 h-6 bg-blue-500 rounded-full inline-block"></span>
+          <span>How to Use the Solver</span>
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center mb-3">1</div>
+            <h4 class="font-bold text-slate-200 text-sm mb-1">Set 8x8 Board</h4>
+            <p class="text-xs text-slate-400">Click or drag across cells on the grid to mirror your current game board.</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div class="w-8 h-8 rounded-lg bg-orange-500/20 text-orange-400 font-bold flex items-center justify-center mb-3">2</div>
+            <h4 class="font-bold text-slate-200 text-sm mb-1">Pick 3 Shapes</h4>
+            <p class="text-xs text-slate-400">Click "Visual Gallery" on any block to choose visually from all 38 shape variations.</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center mb-3">3</div>
+            <h4 class="font-bold text-slate-200 text-sm mb-1">Calculate AI Move</h4>
+            <p class="text-xs text-slate-400">The solver evaluates permutation orders for maximum score and line clears.</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center mb-3">4</div>
+            <h4 class="font-bold text-slate-200 text-sm mb-1">Follow Steps</h4>
+            <p class="text-xs text-slate-400">Place blocks according to step-by-step highlights to boost your streak.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scoring Rules & FAQ -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+          <h3 class="font-display text-lg font-bold text-white mb-3">Scoring Table</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="text-slate-400 border-b border-slate-800">
+                <tr><th class="pb-2">Clears</th><th class="pb-2 text-right">Points</th></tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                <tr><td class="py-2">1 Line</td><td class="py-2 text-right font-medium text-amber-400">+10 pts</td></tr>
+                <tr><td class="py-2">2 Lines</td><td class="py-2 text-right font-medium text-amber-400">+20 pts</td></tr>
+                <tr><td class="py-2">3 Lines</td><td class="py-2 text-right font-medium text-amber-400">+60 pts</td></tr>
+                <tr><td class="py-2">4 Lines</td><td class="py-2 text-right font-medium text-amber-400">+120 pts</td></tr>
+                <tr><td class="py-2">5+ Lines</td><td class="py-2 text-right font-medium text-amber-400">+200 pts</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+          <h3 class="font-display text-lg font-bold text-white mb-3">Supported Shape Types</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-3">
+            Our solver includes pictures and exact geometry for all game shapes:
+          </p>
+          <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+            <li>Single, 2-5 Horizontal & Vertical Lines</li>
+            <li>2x2 Square, 3x3 Big Square, 3x2 & 2x3 Rectangles</li>
+            <li>Small L, 3x2 L, 2x3 L, and Big 3x3 L (All 4 rotations)</li>
+            <li>Z, Reverse Z, and Mirrored Z shapes</li>
+            <li>Small T in Up, Down, Left, and Right orientations</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== SCREEN 2: SOLVER TOOL ===== -->
+    <div class="screen" id="screen-manual">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Main 8x8 Board -->
+        <div class="lg:col-span-7 flex flex-col space-y-4">
+          <div class="flex items-center justify-between bg-slate-900 p-3 px-4 rounded-xl border border-slate-800">
+            <div>
+              <h2 class="font-display font-bold text-base text-white">1. Fill Board Grid (8×8)</h2>
+              <p class="text-xs text-slate-400">Click or drag to toggle filled cells</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="clearMainBoard()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+                Clear
+              </button>
+              <button onclick="fillRandomBoard()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-medium transition">
+                Random
+              </button>
+            </div>
+          </div>
+
+          <div id="grid-editor" class="board-grid shadow-xl">
+            <!-- 8x8 Board Cells -->
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col space-y-3">
+            <button id="solve-btn" onclick="runSolver()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg shadow-blue-600/30 transition transform active:scale-98 flex items-center justify-center space-x-2">
+              <svg class="w-5 h-5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span>Calculate Optimal Move Sequence</span>
+            </button>
+
+            <div id="solver-status" class="hidden text-xs px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-center font-medium">
+              Ready
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: 3 Block Editors & Shape Selectors -->
+        <div class="lg:col-span-5 flex flex-col space-y-4">
+          <div class="bg-slate-900 p-3 px-4 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <h2 class="font-display font-bold text-base text-white">2. Select 3 Blocks</h2>
+              <p class="text-xs text-slate-400">Use visual gallery or pickers below</p>
+            </div>
+            <button onclick="clearAllBlocks()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+              Reset
+            </button>
+          </div>
+
+          <!-- Block Slots -->
+          <div class="grid grid-cols-1 gap-4">
+            
+            <!-- Block Slot 0 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-orange-400 flex items-center space-x-1 shrink-0">
+                  <span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span>
+                  <span>Block 1</span>
+                </span>
+                
+                <button onclick="openShapeModal(0)" class="px-2.5 py-1 rounded bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/30 text-xs font-bold transition flex items-center space-x-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                  <span>Visual Gallery</span>
+                </button>
+              </div>
+
+              <select class="shape-selector w-full bg-slate-950 text-slate-200 border border-slate-700 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:border-orange-500" data-figure-index="0" onchange="handleShapeSelect(0, this.value)">
+                <!-- Populate dynamically -->
+              </select>
+
+              <div id="figure-0" class="figure-grid" data-figure-index="0"></div>
+            </div>
+
+            <!-- Block Slot 1 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-cyan-400 flex items-center space-x-1 shrink-0">
+                  <span class="w-2.5 h-2.5 rounded-full bg-cyan-500 inline-block"></span>
+                  <span>Block 2</span>
+                </span>
+                
+                <button onclick="openShapeModal(1)" class="px-2.5 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition flex items-center space-x-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                  <span>Visual Gallery</span>
+                </button>
+              </div>
+
+              <select class="shape-selector w-full bg-slate-950 text-slate-200 border border-slate-700 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:border-cyan-500" data-figure-index="1" onchange="handleShapeSelect(1, this.value)">
+                <!-- Populate dynamically -->
+              </select>
+
+              <div id="figure-1" class="figure-grid" data-figure-index="1"></div>
+            </div>
+
+            <!-- Block Slot 2 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-purple-400 flex items-center space-x-1 shrink-0">
+                  <span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span>
+                  <span>Block 3</span>
+                </span>
+                
+                <button onclick="openShapeModal(2)" class="px-2.5 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-xs font-bold transition flex items-center space-x-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                  <span>Visual Gallery</span>
+                </button>
+              </div>
+
+              <select class="shape-selector w-full bg-slate-950 text-slate-200 border border-slate-700 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:border-purple-500" data-figure-index="2" onchange="handleShapeSelect(2, this.value)">
+                <!-- Populate dynamically -->
+              </select>
+
+              <div id="figure-2" class="figure-grid" data-figure-index="2"></div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ===== SCREEN 3: SOLUTION RESULTS ===== -->
+    <div class="screen" id="screen-results">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-6">
+        <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Solution Found</span>
+            <h2 class="font-display text-2xl font-extrabold text-white">Optimal Placement Steps</h2>
+          </div>
+          <button onclick="switchScreen('manual')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300">
+            ← Modify Input
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mb-6">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+            <span class="text-xs text-slate-400 block mb-1">Total Score</span>
+            <span id="stat-score" class="font-display text-2xl font-extrabold text-amber-400">+0</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+            <span class="text-xs text-slate-400 block mb-1">Lines Cleared</span>
+            <span id="stat-lines" class="font-display text-2xl font-extrabold text-blue-400">0</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+            <span class="text-xs text-slate-400 block mb-1">Placed Pieces</span>
+            <span id="stat-placed" class="font-display text-2xl font-extrabold text-emerald-400">0 / 3</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-6 items-start">
+          <div class="w-full md:w-1/2">
+            <div id="solution-board" class="board-grid shadow-2xl"></div>
+          </div>
+
+          <div class="w-full md:w-1/2 flex flex-col justify-between space-y-4">
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+              <span id="step-badge" class="inline-block px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-400 mb-2">
+                Step 1
+              </span>
+              <h3 id="step-title" class="font-bold text-white text-base mb-1">Place Block 1</h3>
+              <p id="step-desc" class="text-xs text-slate-400 leading-relaxed">
+                Highlights show where to place this block piece.
+              </p>
+            </div>
+
+            <div class="flex items-center space-x-3">
+              <button id="btn-prev-step" onclick="navigateStep(-1)" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition disabled:opacity-50">
+                ← Previous Step
+              </button>
+              <button id="btn-next-step" onclick="navigateStep(1)" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition disabled:opacity-50">
+                Next Step →
+              </button>
+            </div>
+
+            <button onclick="switchScreen('manual')" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300">
+              Reset & Try Another Board
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== VISUAL SHAPE GALLERY MODAL OVERLAY ===== -->
+  <div id="shape-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="font-display font-bold text-lg text-white" id="modal-target-title">Choose Shape for Block 1</h3>
+          <p class="text-xs text-slate-400">Click any picture below to fill the 5×5 editor</p>
+        </div>
+        <button onclick="closeShapeModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center justify-center transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Modal Gallery Body -->
+      <div class="p-4 overflow-y-auto flex-grow space-y-6" id="modal-gallery-body">
+        <!-- Rendered via JavaScript -->
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="bg-slate-900 border-t border-slate-800 py-4 px-4 text-center text-xs text-slate-500">
+    <p>Block Blast Solver App • All 38 Shapes Integrated • Client-side AI Engine</p>
+  </footer>
+
+  <script>
+    // Complete catalog of 38 Block Blast shapes with categories and exact cell coordinates
+    const SHAPES_CATALOG = {
+      'custom': { name: 'Custom / Draw', category: 'Custom', coords: [] },
+      
+      // Squares & Rectangles
+      '1x1': { name: '1×1 Single Square', category: 'Squares & Rectangles', coords: [[0,0]] },
+      '2x2': { name: 'Square (2×2)', category: 'Squares & Rectangles', coords: [[0,0],[0,1],[1,0],[1,1]] },
+      '3x3': { name: 'Big Square (3×3)', category: 'Squares & Rectangles', coords: [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]] },
+      '3x2': { name: 'Rectangle Wide (3×2)', category: 'Squares & Rectangles', coords: [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]] },
+      '2x3': { name: 'Rectangle Tall (2×3)', category: 'Squares & Rectangles', coords: [[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]] },
+
+      // Horizontal Lines
+      'h-line-2': { name: '2 Horizontal', category: 'Lines', coords: [[0,0],[0,1]] },
+      'h-line-3': { name: '3 Horizontal', category: 'Lines', coords: [[0,0],[0,1],[0,2]] },
+      'h-line-4': { name: '4 Horizontal', category: 'Lines', coords: [[0,0],[0,1],[0,2],[0,3]] },
+      'h-line-5': { name: '5 Horizontal', category: 'Lines', coords: [[0,0],[0,1],[0,2],[0,3],[0,4]] },
+
+      // Vertical Lines
+      'v-line-2': { name: '2 Vertical', category: 'Lines', coords: [[0,0],[1,0]] },
+      'v-line-3': { name: '3 Vertical', category: 'Lines', coords: [[0,0],[1,0],[2,0]] },
+      'v-line-4': { name: '4 Vertical', category: 'Lines', coords: [[0,0],[1,0],[2,0],[3,0]] },
+      'v-line-5': { name: '5 Vertical', category: 'Lines', coords: [[0,0],[1,0],[2,0],[3,0],[4,0]] },
+
+      // Small L Shapes (3 blocks)
+      'small-l-left': { name: 'Small L Left', category: 'Small L Shapes', coords: [[0,0],[1,0],[1,1]] },
+      'small-l-right': { name: 'Small L Right', category: 'Small L Shapes', coords: [[0,1],[1,0],[1,1]] },
+      'small-l-top-right': { name: 'Small L Top Right', category: 'Small L Shapes', coords: [[0,0],[0,1],[1,1]] },
+      'small-l-top-left': { name: 'Small L Top Left', category: 'Small L Shapes', coords: [[0,0],[0,1],[1,0]] },
+
+      // L 3x2 Shapes
+      'l-3x2-left': { name: 'L 3×2 Left', category: 'L Shapes (3×2)', coords: [[0,0],[1,0],[2,0],[2,1]] },
+      'l-3x2-right': { name: 'L 3×2 Right', category: 'L Shapes (3×2)', coords: [[0,1],[1,1],[2,0],[2,1]] },
+      'l-3x2-top-right': { name: 'L 3×2 Top Right', category: 'L Shapes (3×2)', coords: [[0,0],[0,1],[1,1],[2,1]] },
+      'l-3x2-top-left': { name: 'L 3×2 Top Left', category: 'L Shapes (3×2)', coords: [[0,0],[0,1],[1,0],[2,0]] },
+
+      // L 2x3 Shapes
+      'l-2x3-left': { name: 'L 2×3 Left', category: 'L Shapes (2×3)', coords: [[0,0],[1,0],[1,1],[1,2]] },
+      'l-2x3-right': { name: 'L 2×3 Right', category: 'L Shapes (2×3)', coords: [[0,2],[1,0],[1,1],[1,2]] },
+      'l-2x3-top-right': { name: 'L 2×3 Top Right', category: 'L Shapes (2×3)', coords: [[0,0],[0,1],[0,2],[1,2]] },
+      'l-2x3-top-left': { name: 'L 2×3 Top Left', category: 'L Shapes (2×3)', coords: [[0,0],[0,1],[0,2],[1,0]] },
+
+      // Big L Shapes (3x3 - 5 blocks)
+      'big-l-left': { name: 'Big L Left', category: 'Big L Shapes (3×3)', coords: [[0,0],[1,0],[2,0],[2,1],[2,2]] },
+      'big-l-right': { name: 'Big L Right', category: 'Big L Shapes (3×3)', coords: [[0,2],[1,2],[2,0],[2,1],[2,2]] },
+      'big-l-top-right': { name: 'Big L Top Right', category: 'Big L Shapes (3×3)', coords: [[0,0],[0,1],[0,2],[1,2],[2,2]] },
+      'big-l-top-left': { name: 'Big L Top Left', category: 'Big L Shapes (3×3)', coords: [[0,0],[0,1],[0,2],[1,0],[2,0]] },
+
+      // Z Shapes
+      'z-h': { name: 'Z Horizontal', category: 'Z Shapes', coords: [[0,0],[0,1],[1,1],[1,2]] },
+      'z-v': { name: 'Z Vertical', category: 'Z Shapes', coords: [[0,1],[1,0],[1,1],[2,0]] },
+      'rev-z-h': { name: 'Reverse Z Horizontal', category: 'Z Shapes', coords: [[0,1],[0,2],[1,0],[1,1]] },
+      'rev-z-v': { name: 'Reverse Z Vertical', category: 'Z Shapes', coords: [[0,0],[1,0],[1,1],[2,1]] },
+      'mirrored-z-v': { name: 'Mirrored Z Vertical', category: 'Z Shapes', coords: [[0,1],[1,0],[1,1],[2,0]] },
+
+      // Small T Shapes
+      't-up': { name: 'Small T Up', category: 'T Shapes', coords: [[0,1],[1,0],[1,1],[1,2]] },
+      't-down': { name: 'Small T Down', category: 'T Shapes', coords: [[0,0],[0,1],[0,2],[1,1]] },
+      't-left': { name: 'Small T Left', category: 'T Shapes', coords: [[0,1],[1,0],[1,1],[2,1]] },
+      't-right': { name: 'Small T Right', category: 'T Shapes', coords: [[0,0],[1,0],[1,1],[2,0]] }
+    };
+
+    // State Variables
+    let mainBoard = Array(8).fill(null).map(() => Array(8).fill(0));
+    let figureBlocks = [
+      Array(5).fill(null).map(() => Array(5).fill(0)),
+      Array(5).fill(null).map(() => Array(5).fill(0)),
+      Array(5).fill(null).map(() => Array(5).fill(0))
+    ];
+
+    let isMouseDown = false;
+    let dragTargetValue = 1;
+    let activeModalTargetBlock = 0;
+
+    let solutionSteps = [];
+    let currentStepIdx = 0;
+
+    window.onload = function() {
+      populateShapeDropdowns();
+      initMainBoardUI();
+      initFigureEditorsUI();
+
+      document.addEventListener('mouseup', () => { isMouseDown = false; });
+    };
+
+    // Populate shape selection dropdown options dynamically
+    function populateShapeDropdowns() {
+      const selectors = document.querySelectorAll('.shape-selector');
+      selectors.forEach((select) => {
+        select.innerHTML = '';
+        Object.keys(SHAPES_CATALOG).forEach((key) => {
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = SHAPES_CATALOG[key].name;
+          select.appendChild(opt);
+        });
+      });
+    }
+
+    // Build 8x8 Board UI
+    function initMainBoardUI() {
+      const container = document.getElementById('grid-editor');
+      container.innerHTML = '';
+
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'board-cell';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          
+          cell.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            isMouseDown = true;
+            dragTargetValue = mainBoard[r][c] === 1 ? 0 : 1;
+            toggleBoardCell(r, c, dragTargetValue);
+          });
+
+          cell.addEventListener('mouseenter', () => {
+            if (isMouseDown) toggleBoardCell(r, c, dragTargetValue);
+          });
+
+          container.appendChild(cell);
+        }
+      }
+      renderMainBoard();
+    }
+
+    function toggleBoardCell(r, c, val) {
+      mainBoard[r][c] = val;
+      renderMainBoard();
+    }
+
+    function renderMainBoard() {
+      const cells = document.querySelectorAll('#grid-editor .board-cell');
+      cells.forEach(cell => {
+        const r = parseInt(cell.dataset.row);
+        const c = parseInt(cell.dataset.col);
+        if (mainBoard[r][c] === 1) cell.classList.add('filled');
+        else cell.classList.remove('filled');
+      });
+    }
+
+    // Build 5x5 Block Figure UI
+    function initFigureEditorsUI() {
+      for (let f = 0; f < 3; f++) {
+        const container = document.getElementById(`figure-${f}`);
+        container.innerHTML = '';
+
+        for (let r = 0; r < 5; r++) {
+          for (let c = 0; c < 5; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'figure-cell';
+            cell.dataset.fig = f;
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+
+            cell.addEventListener('mousedown', (e) => {
+              e.preventDefault();
+              isMouseDown = true;
+              dragTargetValue = figureBlocks[f][r][c] === 1 ? 0 : 1;
+              toggleFigureCell(f, r, c, dragTargetValue);
+              setDropdownToCustom(f);
+            });
+
+            cell.addEventListener('mouseenter', () => {
+              if (isMouseDown) {
+                toggleFigureCell(f, r, c, dragTargetValue);
+                setDropdownToCustom(f);
+              }
+            });
+
+            container.appendChild(cell);
+          }
+        }
+        renderFigureBoard(f);
+      }
+    }
+
+    function toggleFigureCell(f, r, c, val) {
+      figureBlocks[f][r][c] = val;
+      renderFigureBoard(f);
+    }
+
+    function setDropdownToCustom(f) {
+      const selector = document.querySelector(`.shape-selector[data-figure-index="${f}"]`);
+      if (selector) selector.value = 'custom';
+    }
+
+    function renderFigureBoard(f) {
+      const cells = document.querySelectorAll(`#figure-${f} .figure-cell`);
+      cells.forEach(cell => {
+        const r = parseInt(cell.dataset.row);
+        const c = parseInt(cell.dataset.col);
+        cell.className = 'figure-cell';
+        if (figureBlocks[f][r][c] === 1) cell.classList.add(`active-${f}`);
+      });
+    }
+
+    // Open Shape Modal
+    function openShapeModal(blockIdx) {
+      activeModalTargetBlock = blockIdx;
+      document.getElementById('modal-target-title').innerText = `Choose Shape for Block ${blockIdx + 1}`;
+      
+      const galleryBody = document.getElementById('modal-gallery-body');
+      galleryBody.innerHTML = '';
+
+      // Group shapes by Category
+      const categories = {};
+      Object.keys(SHAPES_CATALOG).forEach(key => {
+        const item = SHAPES_CATALOG[key];
+        if (key === 'custom') return; // Skip custom in gallery grid
+        if (!categories[item.category]) categories[item.category] = [];
+        categories[item.category].push({ key: key, ...item });
+      });
+
+      Object.keys(categories).forEach(catName => {
+        const catSection = document.createElement('div');
+        catSection.className = 'space-y-3';
+        
+        const catTitle = document.createElement('h4');
+        catTitle.className = 'text-xs font-bold uppercase tracking-wider text-amber-400 border-b border-slate-800 pb-1';
+        catTitle.innerText = catName;
+        catSection.appendChild(catTitle);
+
+        const cardGrid = document.createElement('div');
+        cardGrid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3';
+
+        categories[catName].forEach(shape => {
+          const card = document.createElement('button');
+          card.className = 'bg-slate-950 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 p-2.5 rounded-xl flex items-center space-x-3 transition text-left group';
+          card.onclick = () => selectShapeFromModal(shape.key);
+
+          // Mini 5x5 preview
+          const miniGrid = document.createElement('div');
+          miniGrid.className = 'mini-grid shrink-0';
+
+          for (let mr = 0; mr < 5; mr++) {
+            for (let mc = 0; mc < 5; mc++) {
+              const miniCell = document.createElement('div');
+              miniCell.className = 'mini-cell';
+              if (shape.coords.some(([r, c]) => r === mr && c === mc)) {
+                miniCell.classList.add('filled');
+              }
+              miniGrid.appendChild(miniCell);
+            }
+          }
+
+          const label = document.createElement('span');
+          label.className = 'text-xs font-medium text-slate-200 group-hover:text-amber-300 leading-tight';
+          label.innerText = shape.name;
+
+          card.appendChild(miniGrid);
+          card.appendChild(label);
+          cardGrid.appendChild(card);
+        });
+
+        catSection.appendChild(cardGrid);
+        galleryBody.appendChild(catSection);
+      });
+
+      document.getElementById('shape-modal').classList.remove('hidden');
+    }
+
+    function closeShapeModal() {
+      document.getElementById('shape-modal').classList.add('hidden');
+    }
+
+    function selectShapeFromModal(shapeKey) {
+      handleShapeSelect(activeModalTargetBlock, shapeKey);
+      const selector = document.querySelector(`.shape-selector[data-figure-index="${activeModalTargetBlock}"]`);
+      if (selector) selector.value = shapeKey;
+      closeShapeModal();
+    }
+
+    // Handle Dropdown Change
+    function handleShapeSelect(figIdx, shapeKey) {
+      figureBlocks[figIdx] = Array(5).fill(null).map(() => Array(5).fill(0));
+
+      if (shapeKey !== 'custom' && SHAPES_CATALOG[shapeKey]) {
+        const coords = SHAPES_CATALOG[shapeKey].coords;
+        coords.forEach(([r, c]) => {
+          if (r < 5 && c < 5) figureBlocks[figIdx][r][c] = 1;
+        });
+      }
+
+      renderFigureBoard(figIdx);
+    }
+
+    // Actions
+    function clearMainBoard() {
+      mainBoard = Array(8).fill(null).map(() => Array(8).fill(0));
+      renderMainBoard();
+    }
+
+    function fillRandomBoard() {
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          mainBoard[r][c] = Math.random() < 0.35 ? 1 : 0;
+        }
+      }
+      renderMainBoard();
+    }
+
+    function clearAllBlocks() {
+      for (let f = 0; f < 3; f++) {
+        figureBlocks[f] = Array(5).fill(null).map(() => Array(5).fill(0));
+        renderFigureBoard(f);
+        setDropdownToCustom(f);
+      }
+    }
+
+    function loadDemoScenario() {
+      switchScreen('manual');
+      clearMainBoard();
+      
+      mainBoard = [
+        [0,0,0,0,0,0,0,0],
+        [0,1,1,1,0,0,0,0],
+        [0,1,1,1,0,1,1,0],
+        [0,0,0,0,0,1,1,0],
+        [1,1,1,0,0,0,0,0],
+        [1,1,1,0,0,1,1,1],
+        [0,0,0,0,0,1,1,1],
+        [0,0,0,0,0,0,0,0]
+      ];
+      renderMainBoard();
+
+      selectShapeFromModal_Direct(0, 'small-l-left');
+      selectShapeFromModal_Direct(1, '2x2');
+      selectShapeFromModal_Direct(2, 'h-line-3');
+    }
+
+    function selectShapeFromModal_Direct(figIdx, key) {
+      handleShapeSelect(figIdx, key);
+      const selector = document.querySelector(`.shape-selector[data-figure-index="${figIdx}"]`);
+      if (selector) selector.value = key;
+    }
+
+    function getNormalizedPieceCoords(matrix) {
+      const coords = [];
+      let minR = 5, minC = 5;
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          if (matrix[r][c] === 1) {
+            coords.push([r, c]);
+            if (r < minR) minR = r;
+            if (c < minC) minC = c;
+          }
+        }
+      }
+      if (coords.length === 0) return null;
+      return coords.map(([r, c]) => [r - minR, c - minC]);
+    }
+
+    // Solver Engine
+    function runSolver() {
+      const activePieces = [];
+      for (let f = 0; f < 3; f++) {
+        const coords = getNormalizedPieceCoords(figureBlocks[f]);
+        if (coords && coords.length > 0) {
+          activePieces.push({ figIdx: f, coords: coords });
+        }
+      }
+
+      const statusEl = document.getElementById('solver-status');
+      statusEl.classList.remove('hidden');
+
+      if (activePieces.length === 0) {
+        statusEl.innerText = "Please select or draw at least 1 block shape!";
+        statusEl.className = "text-xs px-3 py-2 rounded-lg bg-red-900/50 text-red-300 text-center font-medium";
+        return;
+      }
+
+      statusEl.innerText = "Evaluating optimal placement permutations...";
+      statusEl.className = "text-xs px-3 py-2 rounded-lg bg-amber-900/50 text-amber-300 text-center font-medium";
+
+      setTimeout(() => {
+        const result = solveBacktrack(mainBoard, activePieces);
+        if (result && result.steps.length > 0) {
+          solutionSteps = result.steps;
+          currentStepIdx = 0;
+          renderSolutionView();
+          switchScreen('results');
+        } else {
+          statusEl.innerText = "No valid move combinations found for these blocks! Try clearing board cells.";
+          statusEl.className = "text-xs px-3 py-2 rounded-lg bg-red-900/50 text-red-300 text-center font-medium";
+        }
+      }, 100);
+    }
+
+    function solveBacktrack(board, pieces) {
+      let bestSolution = null;
+      let maxScore = -1;
+
+      function permute(unusedPieces, currentBoard, currentSteps, currentScore, linesClearedTotal) {
+        if (unusedPieces.length === 0) {
+          if (currentScore > maxScore) {
+            maxScore = currentScore;
+            bestSolution = {
+              steps: JSON.parse(JSON.stringify(currentSteps)),
+              score: currentScore,
+              linesCleared: linesClearedTotal,
+              placedCount: currentSteps.length
+            };
+          }
+          return;
+        }
+
+        let piecePlacedAny = false;
+
+        for (let i = 0; i < unusedPieces.length; i++) {
+          const piece = unusedPieces[i];
+          const remaining = unusedPieces.filter((_, idx) => idx !== i);
+
+          let maxR = 0, maxC = 0;
+          piece.coords.forEach(([r, c]) => {
+            if (r > maxR) maxR = r;
+            if (c > maxC) maxC = c;
+          });
+
+          for (let topR = 0; topR <= 8 - (maxR + 1); topR++) {
+            for (let leftC = 0; leftC <= 8 - (maxC + 1); leftC++) {
+              
+              if (canPlace(currentBoard, piece.coords, topR, leftC)) {
+                piecePlacedAny = true;
+                
+                const nextBoard = currentBoard.map(row => [...row]);
+                piece.coords.forEach(([r, c]) => {
+                  nextBoard[topR + r][leftC + c] = 1;
+                });
+
+                let stepScore = piece.coords.length;
+                const { boardAfterClear, linesCleared } = processLineClears(nextBoard);
+                
+                if (linesCleared === 1) stepScore += 10;
+                else if (linesCleared === 2) stepScore += 20;
+                else if (linesCleared === 3) stepScore += 60;
+                else if (linesCleared === 4) stepScore += 120;
+                else if (linesCleared >= 5) stepScore += 200;
+
+                const stepInfo = {
+                  figIdx: piece.figIdx,
+                  topR: topR,
+                  leftC: leftC,
+                  coords: piece.coords,
+                  boardBefore: currentBoard.map(row => [...row]),
+                  boardAfter: boardAfterClear.map(row => [...row]),
+                  linesCleared: linesCleared,
+                  stepScore: stepScore
+                };
+
+                permute(
+                  remaining,
+                  boardAfterClear,
+                  [...currentSteps, stepInfo],
+                  currentScore + stepScore,
+                  linesClearedTotal + linesCleared
+                );
+              }
+
+            }
+          }
+        }
+
+        if (!piecePlacedAny && currentSteps.length > 0) {
+          if (currentScore > maxScore) {
+            maxScore = currentScore;
+            bestSolution = {
+              steps: JSON.parse(JSON.stringify(currentSteps)),
+              score: currentScore,
+              linesCleared: linesClearedTotal,
+              placedCount: currentSteps.length
+            };
+          }
+        }
+      }
+
+      permute(pieces, board, [], 0, 0);
+      return bestSolution;
+    }
+
+    function canPlace(board, coords, topR, leftC) {
+      for (let i = 0; i < coords.length; i++) {
+        const r = topR + coords[i][0];
+        const c = leftC + coords[i][1];
+        if (r < 0 || r >= 8 || c < 0 || c >= 8 || board[r][c] !== 0) return false;
+      }
+      return true;
+    }
+
+    function processLineClears(board) {
+      const rowsToClear = [];
+      const colsToClear = [];
+
+      for (let r = 0; r < 8; r++) {
+        if (board[r].every(cell => cell === 1)) rowsToClear.push(r);
+      }
+
+      for (let c = 0; c < 8; c++) {
+        let full = true;
+        for (let r = 0; r < 8; r++) {
+          if (board[r][c] !== 1) { full = false; break; }
+        }
+        if (full) colsToClear.push(c);
+      }
+
+      const boardAfterClear = board.map(row => [...row]);
+      rowsToClear.forEach(r => { for (let c = 0; c < 8; c++) boardAfterClear[r][c] = 0; });
+      colsToClear.forEach(c => { for (let r = 0; r < 8; r++) boardAfterClear[r][c] = 0; });
+
+      return {
+        boardAfterClear: boardAfterClear,
+        linesCleared: rowsToClear.length + colsToClear.length
+      };
+    }
+
+    function renderSolutionView() {
+      if (solutionSteps.length === 0) return;
+
+      const totalScore = solutionSteps.reduce((acc, s) => acc + s.stepScore, 0);
+      const totalLines = solutionSteps.reduce((acc, s) => acc + s.linesCleared, 0);
+
+      document.getElementById('stat-score').innerText = `+${totalScore}`;
+      document.getElementById('stat-lines').innerText = totalLines;
+      document.getElementById('stat-placed').innerText = `${solutionSteps.length} / 3`;
+
+      renderStep(currentStepIdx);
+    }
+
+    function renderStep(idx) {
+      const step = solutionSteps[idx];
+      if (!step) return;
+
+      document.getElementById('step-badge').innerText = `Step ${idx + 1} of ${solutionSteps.length}`;
+      document.getElementById('step-title').innerText = `Place Block ${step.figIdx + 1}`;
+      
+      let descText = `Place Block ${step.figIdx + 1} at Row ${step.topR + 1}, Column ${step.leftC + 1}.`;
+      if (step.linesCleared > 0) {
+        descText += ` Clears ${step.linesCleared} line(s) (+${step.stepScore} pts)!`;
+      } else {
+        descText += ` Earning +${step.stepScore} pts.`;
+      }
+      document.getElementById('step-desc').innerText = descText;
+
+      const container = document.getElementById('solution-board');
+      container.innerHTML = '';
+
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'board-cell';
+
+          const isExisting = step.boardBefore[r][c] === 1;
+          const isPlacedNew = step.coords.some(([pr, pc]) => (step.topR + pr === r) && (step.leftC + pc === c));
+
+          if (isPlacedNew) cell.classList.add(`placed-block-${step.figIdx}`);
+          else if (isExisting) cell.classList.add('filled');
+
+          container.appendChild(cell);
+        }
+      }
+
+      document.getElementById('btn-prev-step').disabled = (idx === 0);
+      document.getElementById('btn-next-step').disabled = (idx === solutionSteps.length - 1);
+    }
+
+    function navigateStep(direction) {
+      const nextIdx = currentStepIdx + direction;
+      if (nextIdx >= 0 && nextIdx < solutionSteps.length) {
+        currentStepIdx = nextIdx;
+        renderStep(currentStepIdx);
+      }
+    }
+
+    function switchScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(`screen-${screenId}`);
+      if (target) target.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
